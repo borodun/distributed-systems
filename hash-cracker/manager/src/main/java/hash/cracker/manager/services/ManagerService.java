@@ -21,9 +21,10 @@ public class ManagerService {
 
         CrackHashManagerRequest request = new CrackHashManagerRequest();
         request.setAlphabet(new CrackHashManagerRequest.Alphabet());
-        request.getAlphabet().getSymbols().add("qwerty");
+        request.getAlphabet().getSymbols().add("abcdefg");
         request.setRequestId(requestId);
         request.setHash(task.getHash());
+        request.setMaxLength(task.getMaxLength());
 
         restTemplate.postForObject(workerUrl + "/internal/api/worker/hash/crack/task", request, Void.class);
         return ResponseEntity.ok(requestId);
