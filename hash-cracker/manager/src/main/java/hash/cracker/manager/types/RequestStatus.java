@@ -1,39 +1,22 @@
 package hash.cracker.manager.types;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
 public class RequestStatus {
-    private String requestId;
     private Status status;
     private List<String> data;
 
-    public RequestStatus(String requestId, Status status, List<String> data) {
-        this.requestId = requestId;
-        this.status = status;
-        this.data = data;
-    }
-
-    public String getRequestId() {
-        return requestId;
-    }
-
-    public void setRequestId(String requestId) {
-        this.requestId = requestId;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public List<String> getData() {
-        return data;
-    }
-
-    public void setData(List<String> data) {
-        this.data = data;
+    public RequestStatus() {
+        this.status = Status.IN_PROGRESS;
+        this.data = new ArrayList<String>();
     }
 }

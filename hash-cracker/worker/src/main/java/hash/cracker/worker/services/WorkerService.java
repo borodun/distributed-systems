@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -16,28 +17,29 @@ import java.util.concurrent.Future;
 @Service
 @EnableScheduling
 public class WorkerService {
-    private final ConcurrentHashMap<String, Future<CrackHashWorkerResponse>> tasks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<LocalTime , Future<CrackHashWorkerResponse>> tasks = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     private final String managerUrl = "http://localhost:8080";
-    HashCracker cracker = new HashCracker(1, 1);
+    HashCracker cracker = new HashCracker(2, 10);
 
     public void ReceiveTask(CrackHashManagerRequest request) {
         System.out.println("Receive request: " + request.getAlphabet().getSymbols());
         Future<CrackHashWorkerResponse> future = cracker.addTask(request);
-        tasks.put(request.getRequestId(), future);
+        LocalTime  timeStart = LocalTime.now();
+        tasks.put(timeStart, future);
     }
 
     @Scheduled(initialDelay = 5000, fixedRate = 5000)
     public void SendAnswers() {
-        for (Map.Entry<String, Future<CrackHashWorkerResponse>> entry : tasks.entrySet()) {
-            String requestId = entry.getKey();
+        for (Map.Entry<LocalTime, Future<CrackHashWorkerResponse>> entry : tasks.entrySet()) {
+            LocalTime startTime = entry.getKey();
             Future<CrackHashWorkerResponse> future = entry.getValue();
 
             if (!future.isDone()) {
-                System.out.println("Task " + requestId + " is in progress");
+                System.out.println("Task " + startTime + " is in progress");
                 continue;
             } else {
-                System.out.println("Task " + requestId + " is done");
+                System.out.println("Task " + startTime + " is done");
             }
 
             CrackHashWorkerResponse response;
@@ -48,7 +50,7 @@ public class WorkerService {
                 e.printStackTrace();
             }
 
-            tasks.remove(requestId);
+            tasks.remove(startTime);
         }
     }
 }

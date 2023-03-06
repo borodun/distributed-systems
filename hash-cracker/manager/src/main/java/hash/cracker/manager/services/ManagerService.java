@@ -17,16 +17,27 @@ public class ManagerService {
     public ResponseEntity<String> submitTask(Task task) {
         System.out.println("Submit task: " + task.toString());
         String requestId = UUID.randomUUID().toString();
-        requestStatuses.put(requestId, new RequestStatus(requestId, Status.IN_PROGRESS, null));
 
         CrackHashManagerRequest request = new CrackHashManagerRequest();
-        request.setAlphabet(new CrackHashManagerRequest.Alphabet());
-        request.getAlphabet().getSymbols().add("abcdefg");
-        request.setRequestId(requestId);
-        request.setHash(task.getHash());
-        request.setMaxLength(task.getMaxLength());
+        String alph = "abcdefg";
+        CrackHashManagerRequest.Alphabet alphabet = new CrackHashManagerRequest.Alphabet();
+        for (String charString : alph.split("")) {
+            alphabet.getSymbols().add(charString);
+        }
 
-        restTemplate.postForObject(workerUrl + "/internal/api/worker/hash/crack/task", request, Void.class);
+        requestStatuses.put(requestId, new RequestStatus());
+
+        int partCount = 4;
+        for (int i = 0; i < partCount; i++) {
+            request.setAlphabet(alphabet);
+            request.setRequestId(requestId);
+            request.setHash(task.getHash());
+            request.setMaxLength(task.getMaxLength());
+            request.setPartCount(partCount);
+            request.setPartNumber(i);
+
+            restTemplate.postForObject(workerUrl + "/internal/api/worker/hash/crack/task", request, Void.class);
+        }
         return ResponseEntity.ok(requestId);
     }
 
@@ -41,7 +52,7 @@ public class ManagerService {
 
     public void ReceiveAnswers(CrackHashWorkerResponse response) {
         System.out.println("Receive answers:" + response.getAnswers().getWords().toString());
-        requestStatuses.get(response.getRequestId()).setData(response.getAnswers().getWords());
+        requestStatuses.get(response.getRequestId()).getData().addAll(response.getAnswers().getWords());
         requestStatuses.get(response.getRequestId()).setStatus(Status.READY);
     }
 }

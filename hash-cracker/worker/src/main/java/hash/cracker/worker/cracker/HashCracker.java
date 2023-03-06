@@ -2,9 +2,17 @@ package hash.cracker.worker.cracker;
 
 import hash.cracker.worker.types.CrackHashManagerRequest;
 import hash.cracker.worker.types.CrackHashWorkerResponse;
+import jakarta.xml.bind.DatatypeConverter;
+
+import org.apache.logging.log4j.util.Strings;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.paukov.combinatorics.Generator;
 import org.paukov.combinatorics.ICombinatoricsVector;
+import org.paukov.combinatorics.permutations.PermutationGenerator;
+import org.paukov.combinatorics.util.ComplexCombinationGenerator;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
@@ -26,58 +34,56 @@ public class HashCracker {
             CrackHashWorkerResponse response =  new CrackHashWorkerResponse();
             response.setRequestId(task.getRequestId());
             response.setAnswers(new CrackHashWorkerResponse.Answers());
-            try {
-                String md5Hash = task.getHash();
-                int partNumber = task.getPartNumber();
-                int partCount = task.getPartCount();
-                List<String> alphabet = task.getAlphabet().getSymbols();
-                int maxLength = task.getMaxLength();
 
-                response.getAnswers().getWords().add("answer");
+            String md5Hash = task.getHash();
+            int partNumber = task.getPartNumber();
+            int partCount = task.getPartCount();
+            List<String> alphabet = task.getAlphabet().getSymbols();
+            int maxLength = task.getMaxLength();
 
-                System.out.println("Thread finished");
-            } catch (Exception e) {
-                e.printStackTrace();
+            ICombinatoricsVector<String> vector = createVector(alphabet);
+            for (int i = 1; i <= maxLength; i++) {
+                System.out.println("\niter: " + i);
+                Generator<String> gen = createPermutationWithRepetitionGenerator(vector, i);
+
+                System.out.println("Total size: " + gen.getNumberOfGeneratedObjects());
+
+                long totalObjects = gen.getNumberOfGeneratedObjects();
+
+                long[] ranges = splitNumber(totalObjects, partCount);
+                System.out.println(Arrays.toString(ranges));
+
+                long start = ranges[partNumber] + 1;
+                long stop = ranges[partNumber + 1];
+
+                System.out.println("Start: " + start);
+                System.out.println("Stop: " + stop);
+
+                List<ICombinatoricsVector<String>> vec = gen.generateObjectsRange(start, stop);
+
+                System.out.println("Part size: " + vec.size());
+                for (ICombinatoricsVector<String> perm : vec) {
+                    String str = String.join("", perm.getVector());
+
+                    if (str.equals("abcd")) {
+                        System.out.println("Found abcd: " + DigestUtils.md5Hex(str));
+                    }
+
+                    String md5str = DigestUtils.md5Hex(str);
+                    if (md5str.equals(md5Hash)) {
+                        System.out.println(str);
+                        response.getAnswers().getWords().add(str);
+                    }
+                }
             }
+
+            System.out.println("Thread "+task.getRequestId()+" finished");
+
             return response;
         });
     }
 
-    public static void crack(String[] args) {
-        ICombinatoricsVector<String> vector = createVector("abcd1".split(""));
-        for (int i = 0; i < 4; i++) {
-            System.out.println("\niter: " + i);
-            Generator<String> gen = createPermutationWithRepetitionGenerator(vector, i);
-            for (ICombinatoricsVector<String> perm : gen) {
-                System.out.println(perm);
-            }
-            System.out.println("Total size: " + gen.getNumberOfGeneratedObjects());
-
-            int parts = 4;
-            int partNum = 1;
-            long totalObjects = gen.getNumberOfGeneratedObjects();
-
-            long[] ranges = splitNumber(totalObjects, parts);
-            System.out.println(Arrays.toString(splitNumber(totalObjects, parts)));
-
-            long start = ranges[partNum] + 1;
-            long stop = ranges[partNum + 1];
-
-            System.out.println("Start: " + start);
-            System.out.println("Stop: " + stop);
-
-            List<ICombinatoricsVector<String>> vec = gen.generateObjectsRange(start, stop);
-
-            System.out.println("Part size: " + vec.size());
-            for (ICombinatoricsVector<String> subSet : vec) {
-                System.out.println(subSet);
-            }
-
-            System.out.println("==========");
-        }
-    }
-
-    public static long[] splitNumber(long number, int numRanges) {
+    private static long[] splitNumber(long number, int numRanges) {
         long[] ranges = new long[numRanges + 1];
         long rangeSize = number / numRanges;
         long remainder = number % numRanges;
