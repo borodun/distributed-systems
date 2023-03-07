@@ -12,22 +12,25 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ManagerService {
     private final ConcurrentHashMap<String, RequestStatus> requestStatuses = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String workerUrl = "http://localhost:9080";
+    private final String workerUrl = System.getenv("WORKER_ADDR");
+    private final int partCount = Integer.parseInt(System.getenv("TASK_COUNT"));
+    private final String alph = System.getenv("ALPHABET");
+    private final CrackHashManagerRequest.Alphabet alphabet = new CrackHashManagerRequest.Alphabet();
+
+    public ManagerService() {
+        for (String charString : alph.split("")) {
+            alphabet.getSymbols().add(charString);
+        }
+    }
 
     public ResponseEntity<String> submitTask(Task task) {
         System.out.println("Submit task: " + task.toString());
         String requestId = UUID.randomUUID().toString();
 
         CrackHashManagerRequest request = new CrackHashManagerRequest();
-        String alph = "abcdefg";
-        CrackHashManagerRequest.Alphabet alphabet = new CrackHashManagerRequest.Alphabet();
-        for (String charString : alph.split("")) {
-            alphabet.getSymbols().add(charString);
-        }
 
         requestStatuses.put(requestId, new RequestStatus());
 
-        int partCount = 4;
         for (int i = 0; i < partCount; i++) {
             request.setAlphabet(alphabet);
             request.setRequestId(requestId);
@@ -51,6 +54,10 @@ public class ManagerService {
     }
 
     public void ReceiveAnswers(CrackHashWorkerResponse response) {
+        if (response.getAnswers().getWords().isEmpty()) {
+            return;
+        }
+
         System.out.println("Receive answers:" + response.getAnswers().getWords().toString());
         requestStatuses.get(response.getRequestId()).getData().addAll(response.getAnswers().getWords());
         requestStatuses.get(response.getRequestId()).setStatus(Status.READY);

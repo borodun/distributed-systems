@@ -17,34 +17,34 @@ import java.util.concurrent.Future;
 @Service
 @EnableScheduling
 public class WorkerService {
-    private final ConcurrentHashMap<LocalTime , Future<CrackHashWorkerResponse>> tasks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<LocalTime, Future<CrackHashWorkerResponse>> tasks = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
-    private final String managerUrl = "http://localhost:8080";
+    private final String managerUrl = System.getenv("MANAGER_ADDR");
     HashCracker cracker = new HashCracker(2, 10);
 
     public void ReceiveTask(CrackHashManagerRequest request) {
         System.out.println("Receive request: " + request.getAlphabet().getSymbols());
         Future<CrackHashWorkerResponse> future = cracker.addTask(request);
-        LocalTime  timeStart = LocalTime.now();
+        LocalTime timeStart = LocalTime.now();
         tasks.put(timeStart, future);
     }
 
-    @Scheduled(initialDelay = 5000, fixedRate = 5000)
+    @Scheduled(fixedRate = 1000)
     public void SendAnswers() {
         for (Map.Entry<LocalTime, Future<CrackHashWorkerResponse>> entry : tasks.entrySet()) {
             LocalTime startTime = entry.getKey();
             Future<CrackHashWorkerResponse> future = entry.getValue();
 
             if (!future.isDone()) {
-                System.out.println("Task " + startTime + " is in progress");
                 continue;
-            } else {
-                System.out.println("Task " + startTime + " is done");
             }
 
             CrackHashWorkerResponse response;
             try {
                 response = future.get();
+                if (response.getAnswers() == null) {
+                    continue;
+                }
                 restTemplate.patchForObject(managerUrl + "/internal/api/manager/hash/crack/request", response, Void.class);
             } catch (Exception e) {
                 e.printStackTrace();

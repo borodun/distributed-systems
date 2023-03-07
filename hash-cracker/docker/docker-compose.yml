@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+
+  manager:
+    container_name: manager
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: manager
+        SERVICE_PORT: 8080
+    environment:
+      WORKER_ADDR: "http://worker-lb:7080"
+      ALPHABET: "abcde"
+      TASK_COUNT: "30"
+    ports:
+      - "8080:8080"
+
+  worker:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: worker
+    environment:
+      MANAGER_ADDR: "http://manager:8080"
+    deploy:
+      replicas: 3
+
+  loadbalancer:
+    container_name: worker-lb
+    image: haproxy
+    depends_on:
+      - worker
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "7080:7080"
