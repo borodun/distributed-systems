@@ -13,7 +13,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web:3.0.4'
     implementation 'javax.xml.bind:jaxb-api:2.3.1'
     implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.0'
-    implementation 'com.googlecode.combinatoricslib:combinatoricslib:2.3'
+    implementation 'com.github.dpaukov:combinatoricslib3:3.3.3'
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
     implementation 'commons-codec:commons-codec:1.15'
 }
@@ -25,7 +25,7 @@ application {
 jar {
     manifest {
         attributes(
-                'Main-Class': 'hash.cracker.manager.Manager'
+                'Main-Class': 'hash.cracker.worker.Worker'
         )
     }
 }

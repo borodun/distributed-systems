@@ -20,10 +20,10 @@ public class WorkerService {
     private final ConcurrentHashMap<LocalTime, Future<CrackHashWorkerResponse>> tasks = new ConcurrentHashMap<>();
     private final RestTemplate restTemplate = new RestTemplate(new HttpComponentsClientHttpRequestFactory());
     private final String managerUrl = System.getenv("MANAGER_ADDR");
-    HashCracker cracker = new HashCracker(2, 10);
+    private final int threadCount = Integer.parseInt(System.getenv("THREAD_COUNT"));
+    HashCracker cracker = new HashCracker(threadCount, 50);
 
     public void ReceiveTask(CrackHashManagerRequest request) {
-        System.out.println("Receive request: " + request.getAlphabet().getSymbols());
         Future<CrackHashWorkerResponse> future = cracker.addTask(request);
         LocalTime timeStart = LocalTime.now();
         tasks.put(timeStart, future);

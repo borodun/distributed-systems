@@ -12,7 +12,7 @@ docker build \
   --build-arg SERVICE=manager \
   --build-arg SERVICE_PORT=8080 \
   -t manager \
-  -f=docker/Dockerfile . 
+  -f=docker/Dockerfile .
 ```
 
 Build **worker**:
@@ -20,7 +20,7 @@ Build **worker**:
 docker build \
   --build-arg SERVICE=worker \
   -t worker \
-  -f=docker/Dockerfile . 
+  -f=docker/Dockerfile .
 ```
 ## Running
 
@@ -43,20 +43,21 @@ docker run \
 
 Run in Docker Compose:
 ```bash
-docker compose -f docker/docker-compose.yml up --build 
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 # Testing
 
 Send task to crack hash:
 ```bash
-HASH=$(echo "abcd" | md5sum | awk '{print $1}')
-REQUEST_ID=$(curl -X POST -H "Content-Type: application/json" -d '{"hash": "'$HASH'", "maxLength": 4}' localhost:8080/api/hash/crack)
+MSG="abcd"
+HASH=$(echo -n ${MSG} | md5sum | awk '{print $1}')
+REQUEST_ID=$(curl -X POST -H "Content-Type: application/json" -d '{"hash": "'${HASH}'", "maxLength": '${#MSG}'}' localhost:8080/api/hash/crack)
 ```
 
 Check task status:
 ```bash
-curl "localhost:8080/api/hash/status?requestId=$REQUEST_ID" 
+curl "localhost:8080/api/hash/status?requestId=${REQUEST_ID}"
 ```
 
 Should return the following object:

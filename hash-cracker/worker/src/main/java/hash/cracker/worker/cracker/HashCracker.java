@@ -2,15 +2,16 @@ package hash.cracker.worker.cracker;
 
 import hash.cracker.worker.types.CrackHashManagerRequest;
 import hash.cracker.worker.types.CrackHashWorkerResponse;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.paukov.combinatorics.Generator;
-import org.paukov.combinatorics.ICombinatoricsVector;
+import org.paukov.combinatorics3.Generator;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.*;
-
-import static org.paukov.combinatorics.CombinatoricsFactory.createPermutationWithRepetitionGenerator;
-import static org.paukov.combinatorics.CombinatoricsFactory.createVector;
+import javax.xml.bind.DatatypeConverter;
+import java.security.MessageDigest;
+import java.time.Duration;
+import java.time.Instant;
 
 public class HashCracker {
     private BlockingQueue<Runnable> taskQueue;
@@ -18,63 +19,66 @@ public class HashCracker {
 
     public HashCracker(int numThreads, int queueSize) {
         taskQueue = new LinkedBlockingQueue<>(queueSize);
-        threadPool = new ThreadPoolExecutor(1, numThreads, 0L, TimeUnit.MILLISECONDS, taskQueue);
+        threadPool = new ThreadPoolExecutor(numThreads / 2, numThreads, 1, TimeUnit.SECONDS, taskQueue);
     }
 
     public Future<CrackHashWorkerResponse> addTask(CrackHashManagerRequest task) {
         return threadPool.submit(() -> {
+            System.out.println("Task " + task.getPartNumber() + " started");
+
             CrackHashWorkerResponse response = new CrackHashWorkerResponse();
             response.setRequestId(task.getRequestId());
+            response.setAnswers(new CrackHashWorkerResponse.Answers());
 
+            List<String> alphabet = task.getAlphabet().getSymbols();
             int partNumber = task.getPartNumber();
+            int partCount = task.getPartCount();
+            byte[] hashBytes = DatatypeConverter.parseHexBinary(task.getHash());
 
-            ICombinatoricsVector<String> vector = createVector(task.getAlphabet().getSymbols());
+            MessageDigest md5;
+            try {
+                md5 = MessageDigest.getInstance("MD5");
+            } catch(Exception e) {
+                e.printStackTrace();
+                return response;
+            }
 
-            for (int i = 1; i <= task.getMaxLength(); i++) {
-                Generator<String> gen = createPermutationWithRepetitionGenerator(vector, i);
+            Instant timeStart = Instant.now();
+            long count = 0;
+            int interval = 5;
+            for (int i = 0; i <= task.getMaxLength(); i++) {
+                double totalCount = Math.pow(alphabet.size(), i) / partCount;
+                System.out.println("Total number of objects: " + totalCount);
+                Iterator<List<String>> iter = Generator.permutation(alphabet)
+                    .withRepetitions(i)
+                    .iterator();
 
-                long totalObjects = gen.getNumberOfGeneratedObjects();
-
-                long[] ranges = splitNumber(totalObjects, task.getPartCount());
-
-                long start = ranges[partNumber] + 1;
-                long stop = ranges[partNumber + 1];
-
-                List<ICombinatoricsVector<String>> vec = gen.generateObjectsRange(start, stop);
-
-                for (ICombinatoricsVector<String> perm : vec) {
-                    String str = String.join("", perm.getVector());
-
-                    String md5str = DigestUtils.md5Hex(str);
-                    if (md5str.equals(task.getHash())) {
-                        System.out.println("Found hash: " + md5str + "=" + str);
-                        response.setAnswers(new CrackHashWorkerResponse.Answers());
-                        response.getAnswers().getWords().add(str);
+                long step = 0;
+                while(iter.hasNext()) {
+                    long duration = Duration.between(timeStart, Instant.now()).toMillis() / 1000;
+                    if (duration > interval) {
+                        System.out.println("Cracking speed of part " + partNumber + ", iter " + i + ": " + (count / interval) + " (" + (step / totalCount) + "%)");
+                        timeStart = Instant.now();
+                        count = 0;
                     }
+
+                    List<String> el = iter.next();
+                    if (step % partCount == partNumber) {
+                        String str = String.join("", el);
+                        byte[] md5str = md5.digest(str.getBytes());
+                        if (Arrays.equals(md5str, hashBytes)) {
+                            System.out.println("Found hash: " + DatatypeConverter.printHexBinary(md5str) + "=" + str + ", part " + partNumber);
+                            response.getAnswers().getWords().add(str);
+                        }
+                        count++;
+                    }
+                    step++;
                 }
             }
 
+            System.out.println("Task " + task.getPartNumber() + " finished");
+
             return response;
         });
-    }
-
-    private static long[] splitNumber(long number, int numRanges) {
-        long[] ranges = new long[numRanges + 1];
-        long rangeSize = number / numRanges;
-        long remainder = number % numRanges;
-        int currentRange = 0;
-        long rangeEnd = 0;
-
-        for (int i = 0; i < numRanges + 1; i++) {
-            long rangeStart = rangeEnd;
-            rangeEnd = rangeStart + rangeSize;
-            if (currentRange < remainder) {
-                rangeEnd++;
-                currentRange++;
-            }
-            ranges[i] = rangeStart;
-        }
-
-        return ranges;
     }
 }

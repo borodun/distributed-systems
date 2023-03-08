@@ -11,8 +11,8 @@ services:
         SERVICE_PORT: 8080
     environment:
       WORKER_ADDR: "http://worker-lb:7080"
-      ALPHABET: "abcde"
-      TASK_COUNT: "30"
+      ALPHABET: "abcdefghijklmnopqrstuvwxyz1234567890"
+      TASK_COUNT: "24"
     ports:
       - "8080:8080"
 
@@ -24,14 +24,27 @@ services:
         SERVICE: worker
     environment:
       MANAGER_ADDR: "http://manager:8080"
+      THREAD_COUNT: "16"
+    healthcheck:
+      test: curl -f http://localhost:8080/internal/healthcheck || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       replicas: 3
+      # Uncomment following lines to restict resourse consumption
+      # resources:
+      #   limits:
+      #     cpus: '1'
+      #     memory: 2G
 
   loadbalancer:
     container_name: worker-lb
     image: haproxy
     depends_on:
-      - worker
+      worker:
+        condition: service_healthy
     volumes:
       - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:

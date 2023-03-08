@@ -20,4 +20,6 @@ COPY $SERVICE/src/main/resources/application.properties /$SERVICE/application.pr
 ARG SERVICE_PORT
 EXPOSE $SERVER_PORT
 
+RUN apk --no-cache add curl
+
 CMD ["java", "-jar", "app.jar", "--spring.config.location=classpath:/application.properties"]
