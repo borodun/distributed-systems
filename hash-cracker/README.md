@@ -53,6 +53,7 @@ Send task to crack hash:
 MSG="abcd"
 HASH=$(echo -n ${MSG} | md5sum | awk '{print $1}')
 REQUEST_ID=$(curl -X POST -H "Content-Type: application/json" -d '{"hash": "'${HASH}'", "maxLength": '${#MSG}'}' localhost:8080/api/hash/crack)
+echo $REQUEST_ID
 ```
 
 Check task status:

@@ -1,7 +1,7 @@
 package hash.cracker.manager.controllers;
 
 import hash.cracker.manager.services.ManagerService;
-import hash.cracker.manager.types.Response;
+import hash.cracker.manager.types.TaskStatus;
 import hash.cracker.manager.types.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +24,7 @@ public class ExternalController {
     }
 
     @GetMapping("/hash/status")
-    public ResponseEntity<Response> getStatus(@RequestParam String requestId) {
+    public ResponseEntity<TaskStatus> getStatus(@RequestParam String requestId) {
         return service.getStatus(requestId);
     }
 }
