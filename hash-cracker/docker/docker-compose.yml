@@ -12,8 +12,8 @@ services:
     environment:
       WORKER_ADDR: "http://worker-lb:7080"
       ALPHABET: "abcdefghijklmnopqrstuvwxyz1234567890"
-      PART_COUNT: "18"
-      TASK_TIMEOUT: "1M"
+      PART_COUNT: "16"
+      TASK_TIMEOUT: "10M"
     ports:
       - "8080:8080"
 
@@ -25,8 +25,7 @@ services:
         SERVICE: worker
     environment:
       MANAGER_ADDR: "http://manager:8080"
-      THREAD_COUNT: "12"
-      TASK_TIMEOUT: "1M"
+      TASK_TIMEOUT: "10M"
     healthcheck:
       test: curl -f http://localhost:8080/internal/healthcheck || exit 1
       interval: 5s
